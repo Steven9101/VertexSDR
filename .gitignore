@@ -1,0 +1,12 @@
+vertexsdr
+obj/
+pub2/tmp/
+test_output/
+*Zone.Identifier
+Download*.png
+websdr64.c
+.codex
+.claude/
+SDDC_FX3.img
+fftw-wisdom.dat
+websdr64_rebuild

@@ -1,0 +1,41 @@
+VertexSDR - WebSDR Ground-Up Rewrite
+Copyright (c) 2024-2026 magicint1337 https://github.com/Steven9101
+
+LGPL v3 LICENSE
+===============
+
+This is a complete rewrite of WebSDR functionality, written entirely from scratch
+using only knowledge gained from studying the original application's behavior.
+No decompiled code, reverse engineering, or proprietary material is included.
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Lesser General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public License
+along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+Full LGPL 3.0 text available at: https://www.gnu.org/licenses/lgpl-3.0.txt
+
+ATTRIBUTION REQUIREMENTS
+========================
+When using, distributing, or modifying VertexSDR, you MUST:
+  1. Retain this copyright notice
+  2. Include a copy of the LGPL 3.0 license
+  3. Provide source code or instructions to obtain it
+  4. Clearly state all modifications made
+
+SUPPORT & DONATIONS
+===================
+Development, maintenance, and support are voluntary.
+Donations are welcome and greatly appreciated:
+  https://www.paypal.com/paypalme/magicint1337
+
+Contributions via GitHub are also very welcome:
+  https://github.com/Steven9101/VertexSDR
