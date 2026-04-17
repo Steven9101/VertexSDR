@@ -1,0 +1,87 @@
+--- /tmp/tmp.2qwL0YvQDT/mobile-controls.html	2026-04-17 16:21:33.836702837 +0000
++++ pub2/mobile-controls.html	2026-04-17 16:19:21.024338476 +0000
+@@ -85,6 +85,7 @@
+   <option value="LSB">LSB</option>
+   <option value="CW">CW</option>
+   <option value="AM">AM</option>
++  <option value="AMSYNC">AMSYNC</option>
+   <option value="FM">FM</option>
+ </select
+ ></form
+@@ -110,6 +111,7 @@
+ ><button class="relbutton4" id="squelchbutton" name="mute" onclick="togglesquelch()">squelch</button
+ ><button class="relbutton4" name="zoom out" onclick="waterfallapplet[0].setzoom(-1,waterfallapplet[0].width/2)">zoom out</button
+ ><button class="relbutton4" name="zoom in" onclick="waterfallapplet[0].setzoom(-2,waterfallapplet[0].width/2)">zoom in</button
++><div id="amsyncstatus" style="margin:6px 0; min-height:18px;"></div
+ ><hr
+ ><b>Memories:</b><br
+ ><button class="relbutton3" onclick="mem_store()">store</button
+@@ -155,6 +157,7 @@
+ 
+ 
+ <script src="tmp/bandinfo.js" type="text/javascript"></script>
++<script src="copyright-lock.js" type="text/javascript"></script>
+ <script>
+ //----------------------------------------------------------------------------------------
+ 
+@@ -227,6 +230,30 @@
+ {
+    started++;
+    serveravailable=-1;
++   var amsync_ui_last = 0;
++   var amsync_ui_state = -1;
++   var amsync_ui_text = "";
++   soundapplet.truefreqcallback = function(d,l) {
++      var z = document.getElementById('amsyncstatus');
++      if (!z || mode!="AMSYNC") return;
++      var now = (new Date).getTime();
++      if (l===amsync_ui_state && now-amsync_ui_last < 250) return;
++      amsync_ui_last = now;
++      amsync_ui_state = l;
++      var s=(d/1000).toFixed(2);
++      while (s.length<11) s=' '+s;
++      var html=
++         s.substr(0,s.length-9)+'&hairsp;'+s.substr(-9,3)+'&hairsp;'+s.substr(-6,6)+' Hz '+
++         ((l==0)?'locked':(l==1)?'locking':'not locked');
++      if (html===amsync_ui_text) return;
++      amsync_ui_text = html;
++      z.innerHTML=html;
++      switch (l) {
++         case 0: z.style.backgroundColor='#00ff00'; break;
++         case 1: z.style.backgroundColor='#ff8800'; break;
++         default: z.style.backgroundColor='#ff0000'; break;
++      }
++   };
+    setTimeout('test_serverbusy()',100);
+    if (started==2) setfreq(freq);
+ }
+@@ -285,6 +312,7 @@
+    else if (m=="LSB") m=0;
+    else if (m=="CW") m=0;
+    else if (m=="AM") m=1;
++   else if (m=="AMSYNC") m=2;
+    else if (m=="FM") m=4;
+       soundapplet.setparam(
+           "f="+freq
+@@ -343,6 +371,7 @@
+    mode=sel.options[sel.selectedIndex].value;
+    switch (mode) {
+       case "AM": lo=-3.5; hi=3.5; break;
++      case "AMSYNC": lo=-3.5; hi=3.5; break;
+       case "FM": lo=-7; hi=7; break;
+       case "CW": lo=0.55; hi=0.95; break;
+       case "USB": lo=0.3; hi=2.7; break;
+@@ -363,7 +392,7 @@
+    var steps=steps_ssb;
+    var grid=false;
+    var i=Math.abs(st)-1;   
+-   if (mode=="AM") {
++   if (mode=="AM" || mode=="AMSYNC") {
+       if (freq<1800) steps=steps_am9; else steps=steps_am5;
+       if (i>=1) grid=true;
+    }
+@@ -703,4 +732,3 @@
+ 
+ <script src="websdr-sound.js" type="text/javascript"></script>
+ <script src="websdr-waterfall.js" type="text/javascript"></script>
+-

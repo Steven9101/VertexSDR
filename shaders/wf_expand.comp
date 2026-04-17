@@ -1,0 +1,18 @@
+#version 450
+
+layout(local_size_x = 256) in;
+
+layout(set = 0, binding = 0) readonly  buffer PwrIn  { float pwr_src[]; };
+layout(set = 0, binding = 1) writeonly buffer PwrOut { float pwr_dst[]; };
+
+layout(push_constant) uniform Params {
+    uint src_count;
+};
+
+void main() {
+    uint i = gl_GlobalInvocationID.x;
+    if (i >= src_count) return;
+    float v = pwr_src[i];
+    pwr_dst[2u * i]      = v;
+    pwr_dst[2u * i + 1u] = v;
+}

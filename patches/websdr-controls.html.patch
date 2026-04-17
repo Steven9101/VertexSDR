@@ -1,0 +1,16 @@
+--- /tmp/tmp.2qwL0YvQDT/websdr-controls.html	2026-04-17 16:21:33.289705473 +0000
++++ pub2/websdr-controls.html	2026-04-17 16:19:20.540340775 +0000
+@@ -35,7 +35,7 @@
+   <div class="keylist">
+   <tt><b>j k &larr; &rarr;</b></tt>: freq down/up (+shift/ctrl/alt faster)
+   <br>
+-  <tt><b>u l c a f</b></tt>: USB, LSB, CW, AM, FM
++  <tt><b>u l c a f</b></tt>: USB, LSB, CW, AM/AMSYNC, FM
+   <br>
+   <tt><b>z Z</b></tt>: center/zoom waterfall 
+   <br>
+@@ -298,4 +298,3 @@
+ <div id="soundappletdiv"></div>
+ 
+ 
+-

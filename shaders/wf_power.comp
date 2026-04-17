@@ -1,0 +1,41 @@
+#version 450
+
+layout(local_size_x = 256) in;
+
+layout(set = 0, binding = 0) readonly  buffer FFTIn  { vec2 fft_data[]; };
+layout(set = 0, binding = 1) writeonly buffer PwrOut { float pwr_out[]; };
+
+layout(push_constant) uniform Params {
+    uint fft_N;
+    uint top_px;
+    uint dc_xor;
+};
+
+void main() {
+    uint p = gl_GlobalInvocationID.x;
+    if (p >= top_px) return;
+
+    uint sec_bin = p ^ dc_xor;
+
+    if (fft_N == top_px) {
+        if (sec_bin >= fft_N) {
+            pwr_out[p] = 0.0;
+            return;
+        }
+        vec2 c = fft_data[sec_bin];
+        pwr_out[p] = c.x * c.x + c.y * c.y;
+    } else {
+        float ratio = float(fft_N) / float(top_px);
+        uint mb_start = uint(float(sec_bin) * ratio);
+        uint mb_end   = uint(float(sec_bin + 1u) * ratio);
+        if (mb_end <= mb_start) mb_end = mb_start + 1u;
+        if (mb_end > fft_N) mb_end = fft_N;
+        float sum = 0.0;
+        uint cnt = mb_end - mb_start;
+        for (uint k = mb_start; k < mb_end; k++) {
+            vec2 c = fft_data[k];
+            sum += c.x * c.x + c.y * c.y;
+        }
+        pwr_out[p] = cnt > 0u ? sum / float(cnt) : 0.0;
+    }
+}

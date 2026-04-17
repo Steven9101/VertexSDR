@@ -1,0 +1,284 @@
+--- /tmp/tmp.Ctnm8jc297/websdr-base.js	2026-04-17 16:36:35.502243384 +0000
++++ pub2/websdr-base.js	2026-04-17 16:36:24.147300344 +0000
+@@ -1,8 +1,14 @@
++
++// WebSDR JavaScript part
++// Copyright 2007-2014, Pieter-Tjerk de Boer, pa3fwm@websdr.org; all rights reserved.
++// Naturally, distributing this file by the original WebSDR server software to original WebSDR clients is permitted.
++
++
+ // variables governing what the user listens to:
+-var lo=-5,hi=5;   // edges of passband, in kHz w.r.t. the carrier
+-var mode="FM";            // 1 if AM, 0 otherwise (SSB/CW); or text "AM", "FM" etc
++var lo=-2.7,hi=-0.3;   // edges of passband, in kHz w.r.t. the carrier
++var mode="LSB";            // 1 if AM, 0 otherwise (SSB/CW); or text "AM", "FM" etc
+ var band=0;            // id of the band we're listening to
+-var freq=freq=bandinfo[0].vfo;  // frequency (of the carrier) in kHz
++var freq=bandinfo[0].vfo;  // frequency (of the carrier) in kHz
+ var memories = [ ];
+ 
+ 
+@@ -13,7 +19,7 @@
+ var waterslowness=4;
+ var waterheight=100;
+ var watermode=1;
+-var scaleheight=14;
++var scaleheight=44;
+ 
+ 
+ // information about the available "virtual" bands:
+@@ -66,8 +72,11 @@
+ var passbandobjwidth=0;    // width of passband in pixels
+ var centerfreq=bandinfo[band].centerfreq;
+ 
+-
+-
++// Frontend guard disabled to avoid false positives on mobile/browser variants.
++function __vtx_guard()
++{
++   return true;
++}
+ 
+ function debug(a)
+ {
+@@ -108,11 +117,13 @@
+ 
+ function send_soundsettings_to_server()
+ {
++  if (!__vtx_guard()) return;
+   var m=mode;
+   if (m=="USB") m=0;
+   else if (m=="LSB") m=0;
+   else if (m=="CW") m=0;
+   else if (m=="AM") m=1;
++  else if (m=="AMSYNC") m=2;
+   else if (m=="FM") m=4;
+   try {
+      soundapplet.setparam(
+@@ -124,6 +135,15 @@
+         +"&name="+encodeURIComponent(document.usernameform.username.value) 
+         );
+   } catch (e) {};
++  if (mode!="AMSYNC") {
++     var z = document.getElementById('amsyncstatus');
++     if (z) {
++        z.innerHTML="&nbsp;";
++        z.style.width="0px";
++        z.style.backgroundColor="black";
++        z.style.color="black";
++     }
++  }
+   timeout_idle_restart()
+ }
+ 
+@@ -399,8 +419,9 @@
+       case "USB": setmf("usb", 0.3,  2.7); break;
+       case "LSB": setmf("lsb", -2.7, -0.3); break;
+       case "AM":  setmf("am", -4,  4); break;
++      case "AMSYNC": setmf("amsync", -4,  4); break;
+       case "CW":  setmf("cw", -0.95,  -0.55); break;
+-      case "FM":  setmf("fm", -5,  5); break;
++      case "FM":  setmf("fm", -8,  8); break;
+    }
+ }
+ 
+@@ -419,7 +440,7 @@
+    var steps=steps_ssb;
+    var grid=false;
+    var i=Math.abs(st)-1;   
+-   if (mode=="AM") {
++   if (mode=="AM" || mode=="AMSYNC") {
+       if (freq<1800) steps=steps_am9; else steps=steps_am5;
+       if (i>=1) grid=true;
+    }
+@@ -1016,6 +1037,7 @@
+ 
+ function soundappletstarted2()
+ {
++   if (!__vtx_guard()) return;
+    allloadeddone=true;
+ 
+    soundapplet.setvolume(Math.pow(10, document.getElementById('volumecontrol2').value /10.));
+@@ -1028,6 +1050,32 @@
+    try { setmute(document.getElementById('mutecheckbox').checked) } catch(e){};
+    try { setsquelch(document.getElementById('squelchcheckbox').checked) } catch(e){};
+    try { setautonotch(document.getElementById('autonotchcheckbox').checked) } catch(e){};
++   var amsync_ui_last = 0;
++   var amsync_ui_state = -1;
++   var amsync_ui_text = "";
++   soundapplet.truefreqcallback = function(d,l) {
++      var z = document.getElementById('amsyncstatus');
++      if (!z || mode!="AMSYNC") return;
++      var now = (new Date).getTime();
++      if (l===amsync_ui_state && now-amsync_ui_last < 250) return;
++      amsync_ui_last = now;
++      amsync_ui_state = l;
++      var s=(d/1000).toFixed(2);
++      while (s.length<11) s=' '+s;
++      var html=
++         s.substr(0,s.length-9)+'&hairsp;'+s.substr(-9,3)+'&hairsp;'+s.substr(-6,6)+' Hz '+
++         ((l==0)?'locked':(l==1)?'locking':'not locked');
++      if (html===amsync_ui_text) return;
++      amsync_ui_text = html;
++      z.innerHTML=html;
++      z.style.width='';
++      z.style.color='black';
++      switch (l) {
++         case 0: z.style.backgroundColor='#00ff00'; break;
++         case 1: z.style.backgroundColor='#ff8800'; break;
++         default: z.style.backgroundColor='#ff0000'; break;
++      }
++   };
+ 
+    test_serverbusy();
+ }
+@@ -1044,6 +1092,7 @@
+ 
+ function allwaterfallappletsstarted() 
+ {
++   if (!__vtx_guard()) return;
+    var i;
+ 
+    waterfallspeed(waterslowness);
+@@ -1127,15 +1176,18 @@
+    return "black";
+ }
+ 
+-function iOS_audio_start()
++function vtx_audio_start()
+ {
+-   // Safari on iOS only plays webaudio after it has been started by clicking a button, so this function must be called from a button's onclick handler
+-   if (!document.ct) document.ct= new webkitAudioContext();
++   // Universal audio unlock for all browsers (Chrome, Firefox, Safari, iOS).
++   // All modern browsers require audio context to be resumed from a user gesture.
++   var AC = window.AudioContext || window.webkitAudioContext;
++   if (!AC) return;
++   if (!document.ct) document.ct = new AC();
++   if (document.ct.resume) document.ct.resume();
+    var s = document.ct.createBufferSource();
+    s.connect(document.ct.destination);
+-   try { s.start(0); } catch(e) { s.noteOn(0); }
++   try { s.start(0); } catch(e) { try { s.noteOn(0); } catch(e2) {} }
+ }
+-
+ function html5orjavamenu()
+ {
+    var s;
+@@ -1152,6 +1204,8 @@
+    }
+    sup_iOS = 0;   // global!
+    sup_android = 0;   // global!
++   sup_chrome = 0;  // global!
++   sup_firefox = 0; // global!
+    try { 
+       var n=navigator.userAgent.toLowerCase();
+       if (n.indexOf('iphone')!=-1) sup_iOS=1;
+@@ -1159,6 +1213,8 @@
+       if (n.indexOf('ipod')!=-1) sup_iOS=1;
+       if (n.indexOf('ios')!=-1) sup_iOS=1;
+       if (n.indexOf('android')!=-1) sup_android=1;
++      if (n.indexOf('chrome')!=-1) sup_chrome=1;
++      if (n.indexOf('firefox')!=-1) sup_firefox=1;
+    } catch (e) {};
+    if (sup_iOS) isTouchDev=true;
+    var usecookie= readCookie('usejava');
+@@ -1180,7 +1236,7 @@
+    else if (sup_socket && sup_mozaudio) s+='<span style="color: blue">';
+    else s+='<span style="color: red">';
+    s+='<input type="radio" name="groupa" value="HTML5" onclick="html5orjava(1,0);"'+(!usejavasound?" checked":"")+'>HTML5</span>';
+-   if (sup_iOS && sup_socket && sup_webaudio) s+='<input type="button" value="iOS audio start" onclick="iOS_audio_start()">';
++   if (sup_socket && sup_webaudio) s+='<input type="button" value="start audio" onclick="vtx_audio_start()" style="background:#88ff88; font-weight: bold">';
+    document.getElementById('html5choice').innerHTML = s;
+    document.getElementById('record_span').style.display = usejavasound ? "none" : "inline";
+ }
+@@ -1188,6 +1244,7 @@
+ 
+ function bodyonload()
+ {
++   if (!__vtx_guard()) return;
+    var s;
+ 
+    html5orjavamenu();
+@@ -1205,7 +1262,9 @@
+    if (nvbands>=2) document.viewform.group[view].checked=true;
+    else document.viewform.group[view-2].checked=true;
+ 
+-   var x= readCookie('username');
++   var x= ensureAnonUsername();
++   if (document.usernameform && document.usernameform.username)
++      document.usernameform.username.value = x;
+    var p=document.getElementById("please2");
+    if (!x && p) p.innerHTML="<b><i>Please type a name or callsign in the box at the <a href='#please'>top of the page</a> to identify your chat messages!</i></b>";
+ 
+@@ -1312,6 +1371,16 @@
+    send_soundsettings_to_server();
+ }
+ 
++function ensureAnonUsername()
++{
++   var x = readCookie('username');
++   if (x && x.length > 0) return x;
++   var n = Math.floor(Math.random() * 1000000);
++   x = "Anon" + ("000000" + n).slice(-6);
++   createCookie('username', x, 365*5);
++   return x;
++}
++
+ //----------------------------------------------------------------------------------------
+ // things related to interaction with the mouse (clicking & dragging on the frequency axes)
+ 
+@@ -1602,8 +1671,12 @@
+       case 74: freqstep(-st);                return cancelEvent(e);    // J
+       case 39:                                                         // right arrow
+       case 75: freqstep(st);                 return cancelEvent(e);    // K
+-      case 65: setmf ('am',  -4  ,  4  );    return cancelEvent(e);    // A
+-      case 70: setmf ('fm',  -6  ,  6  );    return cancelEvent(e);    // F
++      case 65:
++         if (mode=='AM') setmf('amsync', -4, 4);
++         else if (mode=='AMSYNC') setmf('am', -4, 4);
++         else setmf('am', -4, 4);
++         return cancelEvent(e);    // A
++      case 70: setmf ('fm',  -8  ,  8  );    return cancelEvent(e);    // F
+       case 67: setmf ('cw', -0.95, -0.55);   return cancelEvent(e);    // C
+       case 76: setmf('lsb', -2.7, -0.3);     return cancelEvent(e);    // L
+       case 85: setmf('usb',  0.3,  2.7);     return cancelEvent(e);    // U
+@@ -1623,20 +1696,16 @@
+ 
+ function document_username() 
+ {
+-  var x= readCookie('username');
+-  if (x) {
+-    document.write('<a id="please">Your name or callsign: ');
+-    document.write('<input type="text" value="" name="username" onchange="setusernamecookie()" onclick=""></a>');
+-    document.usernameform.username.value=x;
+-  } else {
+-    document.write('<a id="please"><span id="please1"><b><i>Please log in by typing your name or callsign here (it will be saved for later visits in a cookie):<\/i><\/b></span> ');
+-    document.write('<input type="text" value="" name="username" onchange="setusernamecookie()" onclick=""></a>');
+-  }
++  var x = ensureAnonUsername();
++  document.write('<a id="please">Your name or callsign: ');
++  document.write('<input type="text" value="" name="username" onchange="setusernamecookie()" onclick=""></a>');
++  document.usernameform.username.value = x;
+ }
+ 
+ 
+ function document_waterfalls() 
+ {
++  if (!__vtx_guard()) return;
+   if (view==Views.allbands || view==Views.othersslow) nwaterfalls=nvbands;
+   else if (view==Views.oneband) nwaterfalls=1;
+   else { 
+@@ -1711,6 +1780,7 @@
+ 
+ 
+ function document_soundapplet() {
++  if (!__vtx_guard()) return;
+   if (usejavasound) {
+      if (typeof prep_javasound =="function") prep_javasound();
+      else {
+@@ -1875,5 +1945,3 @@
+   setTimeout("document.logform.comment.value=''",1000);
+   return false;
+ }
+-
+-
